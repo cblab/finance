@@ -4,6 +4,7 @@ import argparse
 import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
+from datetime import datetime
 import openai
 
 # CLI arguments
@@ -16,9 +17,7 @@ ollama_model = "deepseek-r1:7b"
 output_file = "overview.html"
 
 tickers = list(dict.fromkeys([
-    "SHOP", "NOVN", "1211.HK", "HOT", "KRN", "ALV", "MUV2", "NOVO-B.CO", "BATS", "LLOY",
-    "DFEN", "IUSA", "EUNL", "VHYL", "PCFP", "FRLIBD", "FGQI", "1810.HK", "HAUTO", "Z74",
-    "BWLPG", "GOOG", "MO", "ARCC", "CTAS", "CUBE", "IRM", "JNJ", "MAIN", "MELI", "NEE",
+    "SHOP", "ALV", "BWLPG", "GOOG", "MO", "ARCC", "CTAS", "CUBE", "IRM", "JNJ", "MAIN", "MELI", "NEE",
     "NVDA", "OHI", "PBR.A", "PG", "O", "SFM", "HIMS", "AMZN", "BRK-B", "TRMD", "LTC",
     "STAG", "PBA", "ARES", "CRWD", "OBDC", "EQNR", "ASML", "AAPL", "UL", "MSFT", "PLD",
     "SBRA", "VZ", "ADBE"
@@ -37,9 +36,12 @@ headers = {
     "User-Agent": "Mozilla/5.0"
 }
 
+today = datetime.today().strftime("%Y-%m-%d")
+
 # System prompt
 system_prompt = (
-    "You are a world-class financial analyst. Analyze a stock based on financial data scraped from its Finviz profile. "
+    f"Todays date is {today}. Keep that in mind, when answering "
+    "You are acting in the role of a world-class financial analyst like Warren Buffett. Analyze a stock based on financial data scraped from its Finviz profile. "
     "Ignore any navigation, ads, or UI-related text. Only begin analysis if the following key metrics are present: "
     "ROA, ROE, ROI, Revenue Growth, Cost of Revenue, Gross Profit, Operating Expenses, Operating Income, Pretax Income, "
     "Market Cap, P/E, Price/Sales, Price/Book, EPS Surprise, EPS this y, Debt/Equity, and Short Ratio or Short Float. "
