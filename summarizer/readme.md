@@ -22,16 +22,10 @@ It supports both **OpenAI's GPT-4o** and **local models via Ollama**.
 ### 1. Clone this repo (or drop the Python file in a folder)
 
 ```bash
-git clone https://github.com/yourname/stock-summarizer.git
-cd stock-summarizer
+git clone https://github.com/cblab/finance.git
+cd summarizer
 
 
-### 2. Create virtual environment (optional but recommended)
-
-python -m venv llms
-source llms/bin/activate     # Linux/macOS
-llms\\Scripts\\activate      # Windows
-
-### 3. Install required libraries
+### 2. Install required libraries
 
 pip install -r requirements.txt
