@@ -48,7 +48,7 @@ today = datetime.today().strftime("%Y-%m-%d")
 
 # Tickerliste
 tickers = list(dict.fromkeys([
-    "SHOP", "ALV", "BWLPG", "GOOG", "MO", "ARCC", "CTAS", "CUBE", "IRM"
+    "NVDA", "SHOP", "BAT", "GOOG", "MO", "CTAS", "CUBE", "IRM"
 ]))
 
 # Gewichtungen laden
