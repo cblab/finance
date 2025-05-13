@@ -12,8 +12,10 @@ It supports both **OpenAI's GPT-4o** and **local models via Ollama**.
 - Detects catalysts and provides 3-month outlooks
 - Supports both:
   - `--local` = use your own Ollama model (e.g. DeepSeek)
+  - `--openrouter` = use Openrouter (e.g. qwen/qwen3-235b-a22b)
   - default = use OpenAI GPT-4o Mini or GPT-4o via API
-- Outputs a beautiful `overview.html` report
+- Outputs a beautiful `overview.html` report with ticker/company related financial analysis for each ticker
+- Asseses the whole formerly generated report and creates another report called `risk_analysis.html`
 
 ---
 
