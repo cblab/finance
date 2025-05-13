@@ -1,7 +1,7 @@
 # 📊 Stock Summarizer with Finviz, OpenAI & Ollama
 
 This tool fetches stock data from [Finviz.com](https://finviz.com), summarizes financial metrics using a large language model, and outputs a styled HTML report in German.  
-It supports both **OpenAI's GPT-4o** and **local models via Ollama**.
+It supports both **OpenAI's GPT-4o**, **Openrouter models** and **local models via Ollama**.
 
 ---
 
