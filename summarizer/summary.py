@@ -8,28 +8,47 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 from dotenv import load_dotenv
 import openai
+from openai import OpenAI as OpenRouterClient
 
+# Argumente parsen
 parser = argparse.ArgumentParser()
 parser.add_argument("--local", action="store_true")
+parser.add_argument("--openrouter", action="store_true")
 args = parser.parse_args()
+
 use_local = args.local
+use_openrouter = args.openrouter
+
+# Modellnamen und Dateipfade
 ollama_model = "deepseek-r1:7b"
 overview_file = "overview.html"
 risk_file = "risk_report.html"
 weights_file = "weights.csv"
 
+# Umgebungsvariablen laden
 load_dotenv(override=True)
 api_key = os.getenv("OPENAI_API_KEY")
-if not use_local:
+openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
+
+if not use_local and not use_openrouter:
     if not api_key or not api_key.startswith("sk-proj-"):
         raise ValueError("Invalid or missing OpenAI API key.")
     openai.api_key = api_key
 
-headers = { "User-Agent": "Mozilla/5.0" }
+if use_openrouter:
+    if not openrouter_api_key:
+        raise ValueError("Fehlender OpenRouter API Key.")
+    openrouter_client = OpenRouterClient(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=openrouter_api_key
+    )
+
+headers = {"User-Agent": "Mozilla/5.0"}
 today = datetime.today().strftime("%Y-%m-%d")
 
+# Tickerliste
 tickers = list(dict.fromkeys([
-    "SHOP", "ALV", "BWLPG", "GOOG", "MO", "ARCC", "CTAS", "CUBE", "IRM", "JNJ", "MAIN", "MELI", "NEE", "NVDA", "OHI", "PG", "O", "SFM", "HIMS", "AMZN", "BRK-B", "ARES", "OBDC", "EQNR", "UL"
+    "SHOP", "ALV", "BWLPG", "GOOG", "MO", "ARCC", "CTAS", "CUBE", "IRM"
 ]))
 
 # Gewichtungen laden
@@ -43,17 +62,8 @@ with open(weights_file, newline='', encoding='utf-8') as f:
     df_weights = pd.read_csv(f, delimiter=dialect.delimiter)
 
 df_weights.columns = [col.strip() for col in df_weights.columns]
-
-# Umwandlung der Gewichtungsspalte
 gewichtung_col = [col for col in df_weights.columns if "gewicht" in col.lower()][0]
-df_weights[gewichtung_col] = (
-    df_weights[gewichtung_col]
-    .astype(str)
-    .str.replace(",", ".", regex=False)
-    .astype(float)
-)
-
-# Für Risikoanalyse: Gewichte als Markdown
+df_weights[gewichtung_col] = df_weights[gewichtung_col].astype(str).str.replace(",", ".", regex=False).astype(float)
 weights_text = df_weights.to_markdown(index=False)
 
 system_prompt = (
@@ -82,7 +92,10 @@ def user_prompt_for(website):
     return f"You are looking at a financial website titled '{website.title}'.\n\nHere is the scraped text content:\n\n{website.text}"
 
 def messages_for(website):
-    return [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt_for(website)}]
+    return [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt_for(website)}
+    ]
 
 def summarize(ticker):
     url = f"https://finviz.com/quote.ashx?t={ticker}&ty=c&ta=1&p=d"
@@ -91,6 +104,7 @@ def summarize(ticker):
         website = Website(url)
     except Exception as e:
         return f"[Fehler beim Laden: {e}]"
+
     if use_local:
         prompt = f"{system_prompt}\n\n{user_prompt_for(website)}"
         payload = {"model": ollama_model, "prompt": prompt, "stream": False}
@@ -100,6 +114,21 @@ def summarize(ticker):
             return r.json().get("response", "[Fehler: Kein response-Feld]")
         except Exception as e:
             return f"[Fehler vom lokalen Modell: {e}]"
+
+    elif use_openrouter:
+        try:
+            response = openrouter_client.chat.completions.create(
+                model="qwen/qwen3-235b-a22b",
+                messages=messages_for(website),
+                extra_headers={
+                    "HTTP-Referer": "https://dummy.de",
+                    "X-Title": "FinanzanalyseTool"
+                }
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            return f"[Fehler von OpenRouter API: {e}]"
+
     else:
         try:
             response = openai.chat.completions.create(model="gpt-4o-mini", messages=messages_for(website))
@@ -141,16 +170,14 @@ def generate_risk_report(input_html="overview.html", output_html="risk_report.ht
         raw_text = soup.get_text(separator="\n", strip=True)
 
     prompt = (
-        f"Du bist Warren Buffett. Heute ist der {today}. "
+        f"Du agierst in der Rolle von Warren Buffett. Heute ist der {today}. "
         "Du bewertest das Gesamtportfolio basierend auf den folgenden Einzelanalysen.\n"
         "Berücksichtige dabei auch die Gewichtungen der Positionen.\n\n"
         "Erstelle einen Risikobericht in Markdown mit folgenden Punkten:\n"
         "- Überbewertungen\n- Schwache Fundamentaldaten\n- Klumpenrisiken\n"
         "- Zyklische Schwächen\n- Makroökonomische Risiken\n\n"
-        "### Gewichtungen im Portfolio:\n"
-        f"{weights_text}\n\n"
-        "### Detailanalysen:\n"
-        f"{raw_text}"
+        f"### Gewichtungen im Portfolio:\n{weights_text}\n\n"
+        f"### Detailanalysen:\n{raw_text}"
     )
 
     if use_local:
@@ -161,12 +188,30 @@ def generate_risk_report(input_html="overview.html", output_html="risk_report.ht
             result = r.json().get("response", "[Fehler: Kein response-Feld]")
         except Exception as e:
             result = f"[Fehler vom lokalen Modell: {e}]"
+
+    elif use_openrouter:
+        try:
+            response = openrouter_client.chat.completions.create(
+                model="qwen/qwen3-235b-a22b",
+                messages=[
+                    {"role": "system", "content": "Du agierst in der Rolle von Warren Buffett, als vorsichtiger Value-Investor."},
+                    {"role": "user", "content": prompt}
+                ],
+                extra_headers={
+                    "HTTP-Referer": "https://deinprojekt.de",
+                    "X-Title": "FinanzanalyseTool"
+                }
+            )
+            result = response.choices[0].message.content
+        except Exception as e:
+            result = f"[Fehler von OpenRouter API: {e}]"
+
     else:
         try:
             response = openai.chat.completions.create(
                 model="gpt-4o",
                 messages=[
-                    {"role": "system", "content": "Du bist Warren Buffett, ein vorsichtiger Value-Investor."},
+                    {"role": "system", "content": "Du agierst in der Rolle von Warren Buffett, als vorsichtiger Value-Investor."},
                     {"role": "user", "content": prompt}
                 ]
             )
