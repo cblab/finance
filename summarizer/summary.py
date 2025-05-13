@@ -46,9 +46,9 @@ if use_openrouter:
 headers = {"User-Agent": "Mozilla/5.0"}
 today = datetime.today().strftime("%Y-%m-%d")
 
-# Tickerliste
+# Ticker oder URLs
 tickers = list(dict.fromkeys([
-    "NVDA", "SHOP", "BAT", "GOOG", "MO", "CTAS", "CUBE", "IRM"
+    "SHOP", "https://www.onvista.de/aktien/kennzahlen/Allianz-Aktie-DE0008404005", "https://www.onvista.de/aktien/kennzahlen/Muenchener-Rueck-Aktie-DE0008430026"
 ]))
 
 # Gewichtungen laden
@@ -68,8 +68,8 @@ weights_text = df_weights.to_markdown(index=False)
 
 system_prompt = (
     f"Heute ist der {today}. "
-    "Du bist ein weltklasse Finanzanalyst. Analysiere eine Aktie basierend auf den Finviz-Daten. "
-    "Ignoriere Navigations- oder UI-Texte. Starte die Analyse nur, wenn folgende Kennzahlen vorhanden sind: "
+    "Du agierst in der Rolle eines Weltklasse-Finanzanalysten. Analysiere eine Aktie basierend auf den Webseiteninhalten. "
+    "Ignoriere Navigations- oder UI-Texte. Starte die Analyse und benutze dabei so viele wie möglich der folgende Kennzahlen: "
     "ROA, ROE, ROI, Revenue Growth, Cost of Revenue, Gross Profit, Operating Expenses, Operating Income, Pretax Income, "
     "Market Cap, P/E, Price/Sales, Price/Book, EPS Surprise, EPS this y, Debt/Equity, und Short Ratio oder Short Float. "
     "Bewerte die Aktie im Stil eines Value-Investors wie Warren Buffett. "
@@ -97,9 +97,13 @@ def messages_for(website):
         {"role": "user", "content": user_prompt_for(website)}
     ]
 
-def summarize(ticker):
-    url = f"https://finviz.com/quote.ashx?t={ticker}&ty=c&ta=1&p=d"
-    print(f"\n🔍 {ticker}")
+def summarize(identifier):
+    if identifier.startswith("http"):
+        url = identifier
+    else:
+        url = f"https://finviz.com/quote.ashx?t={identifier}&ty=c&ta=1&p=d"
+
+    print(f"\n🔍 {identifier}")
     try:
         website = Website(url)
     except Exception as e:
@@ -121,7 +125,7 @@ def summarize(ticker):
                 model="qwen/qwen3-235b-a22b",
                 messages=messages_for(website),
                 extra_headers={
-                    "HTTP-Referer": "https://dummy.de",
+                    "HTTP-Referer": "https://deinprojekt.de",
                     "X-Title": "FinanzanalyseTool"
                 }
             )
@@ -156,10 +160,10 @@ def generate_html(title, sections, path):
     print(f"✅ {path}")
 
 overview_sections = []
-for ticker in tickers:
-    result = summarize(ticker)
+for identifier in tickers:
+    result = summarize(identifier)
     html_result = result.replace("\n", "<br>")
-    overview_sections.append(f"<h2>{ticker}</h2>")
+    overview_sections.append(f"<h2>{identifier}</h2>")
     overview_sections.append(f"<div>{html_result}</div>")
 
 generate_html("Stock Overview Report", overview_sections, overview_file)
@@ -194,7 +198,7 @@ def generate_risk_report(input_html="overview.html", output_html="risk_report.ht
             response = openrouter_client.chat.completions.create(
                 model="qwen/qwen3-235b-a22b",
                 messages=[
-                    {"role": "system", "content": "Du agierst in der Rolle von Warren Buffett, als vorsichtiger Value-Investor."},
+                    {"role": "system", "content": "Du agierst in der Rolle von Warren Buffett, ein vorsichtiger Value-Investor."},
                     {"role": "user", "content": prompt}
                 ],
                 extra_headers={
@@ -211,7 +215,7 @@ def generate_risk_report(input_html="overview.html", output_html="risk_report.ht
             response = openai.chat.completions.create(
                 model="gpt-4o",
                 messages=[
-                    {"role": "system", "content": "Du agierst in der Rolle von Warren Buffett, als vorsichtiger Value-Investor."},
+                    {"role": "system", "content": "Du agierst in der Rolle von Warren Buffett, ein vorsichtiger Value-Investor."},
                     {"role": "user", "content": prompt}
                 ]
             )
