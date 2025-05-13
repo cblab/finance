@@ -15,7 +15,7 @@ It supports both **OpenAI's GPT-4o**, **Openrouter models** and **local models v
   - `--openrouter` = use Openrouter (e.g. qwen/qwen3-235b-a22b)
   - default = use OpenAI GPT-4o Mini or GPT-4o via API
 - Outputs a beautiful `overview.html` report with ticker/company related financial analysis for each ticker
-- Asseses the whole formerly generated report and creates another report called `risk_analysis.html`
+- Asseses the whole formerly generated report and creates another report called `risk_analysis.html` (a csv-file with weights can be used for refinement).
 
 ---
 
