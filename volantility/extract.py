@@ -36,15 +36,25 @@ price_types = [p.capitalize() for p in price_types]
 if "Adj" in price_types:
     price_types[price_types.index("Adj")] = "Adj Close"
 
+
 # Daten abrufen
 df = get_stock_data(tickers, start_date, end_date, interval)
+
+# Falls mehrere Ticker abgefragt wurden, besitzt der DataFrame eine
+# MultiIndex-Spalte ohne Namen.  Wir benennen die Ebenen, damit die
+# spaetere Auswahl nach Preistyp funktioniert.
+if isinstance(df.columns, pd.MultiIndex):
+    df.columns.names = ["Ticker", "Price"]
 
 if not df.empty:
     # Zeitzoneninformationen entfernen
     df.index = df.index.tz_localize(None)
 
     # Gewünschte Preistypen für die Excel-Datei auswählen
-    df_selected = df.loc[:, df.columns.get_level_values('Price').isin(price_types)]
+    if df.columns.nlevels == 1:
+        df_selected = df.loc[:, df.columns.isin(price_types)]
+    else:
+        df_selected = df.loc[:, df.columns.get_level_values("Price").isin(price_types)]
 
     # Ausgabeordner erstellen
     output_folder = r"E:\\code"
