@@ -2,6 +2,8 @@ import os
 import requests
 import json
 import openai
+from rich.console import Console
+from rich.markdown import Markdown as RichMarkdown
 from typing import List
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
@@ -109,7 +111,6 @@ def get_all_details(url):
         result += Website(link["url"]).get_contents()
     return result
 
-
 def stream_brochure(company_name, url):
     stream = openai.chat.completions.create(
         model=MODEL,
@@ -119,11 +120,16 @@ def stream_brochure(company_name, url):
         ],
         stream=True
     )
-    
+
     response = ""
     for chunk in stream:
         delta = chunk.choices[0].delta.content
         if delta:
-            print(delta, end='', flush=True)  # Direkt auf die Konsole schreiben
+            response += delta
 
+    # Ausgabe als Markdown im Terminal mit 'rich'
+    markdown_output = RichMarkdown(response.replace("```", "").replace("markdown", ""))
+    console.print(markdown_output)
+
+console = Console()
 stream_brochure("Heise", "https://heise.de/")           
